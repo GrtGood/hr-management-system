@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入员工 - 高校教职工人事信息管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-upload me-2"></i>批量导入员工</h2>
+    <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> 返回列表
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-file-excel me-2"></i>上传Excel文件
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">选择Excel文件</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">支持.xlsx和.xls格式文件</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>导入说明：</h6>
+                        <ul class="mb-0">
+                            <li>Excel文件第一行必须是表头</li>
+                            <li>表头顺序：工号、姓名、性别、出生日期、身份证号、电话、邮箱、部门、职位、聘用类型、入职日期、状态、学历、专业、毕业院校</li>
+                            <li>工号和姓名为必填项</li>
+                            <li>部门名称必须在系统中已存在</li>
+                            <li>日期格式：YYYY-MM-DD</li>
+                        </ul>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> 开始导入
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-download me-2"></i>下载模板
+            </div>
+            <div class="card-body">
+                <p>如果没有Excel模板，可以先导出现有数据作为参考，或者下载空白模板。</p>
+                <a href="{{ url_for('export_employees') }}" class="btn btn-success w-100 mb-2">
+                    <i class="bi bi-file-excel"></i> 导出现有数据
+                </a>
+                <p class="text-muted small mt-3">
+                    <strong>提示：</strong>可以先导出现有员工数据，查看格式后再准备导入文件。
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-lightbulb me-2"></i>快速提示
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>确保Excel中的部门名称已在系统中创建</li>
+                    <li>工号不能重复</li>
+                    <li>日期格式要正确</li>
+                    <li>如果某行数据有误，会跳过该行继续导入其他行</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
