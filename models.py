@@ -13,11 +13,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='user')  # admin 或 user
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
-    
-    # 关联员工信息
-    employee = db.relationship('Employee', backref='user_account', foreign_keys=[employee_id])
     
     def set_password(self, password):
         """设置密码"""
@@ -37,8 +33,6 @@ class User(UserMixin, db.Model):
     
     def get_display_name(self):
         """获取显示名称"""
-        if self.employee:
-            return self.employee.name
         return self.username
 
 

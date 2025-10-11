@@ -582,12 +582,7 @@ def register_user_management_routes(app, admin_required):
         
         # 搜索过滤
         if search:
-            query = query.filter(
-                db.or_(
-                    User.username.ilike(f'%{search}%'),
-                    User.employee.has(Employee.name.ilike(f'%{search}%'))
-                )
-            )
+            query = query.filter(User.username.ilike(f'%{search}%'))
         
         # 角色过滤
         if role_filter:
@@ -613,19 +608,16 @@ def register_user_management_routes(app, admin_required):
                 username = request.form.get('username').strip()
                 password = request.form.get('password')
                 role = request.form.get('role', 'user')
-                employee_id = request.form.get('employee_id') or None
                 
                 # 验证用户名是否已存在
                 if User.query.filter_by(username=username).first():
                     flash('用户名已存在！', 'error')
-                    return render_template('users/add.html', 
-                                         employees=Employee.query.filter_by(status='在职').all())
+                    return render_template('users/add.html')
                 
                 # 创建用户
                 user = User(
                     username=username,
-                    role=role,
-                    employee_id=int(employee_id) if employee_id else None
+                    role=role
                 )
                 user.set_password(password)
                 
@@ -639,14 +631,7 @@ def register_user_management_routes(app, admin_required):
                 db.session.rollback()
                 flash(f'创建失败：{str(e)}', 'error')
         
-        # 获取没有关联用户账号的员工
-        available_employees = Employee.query.filter_by(status='在职')\
-                                          .filter(~Employee.id.in_(
-                                              db.session.query(User.employee_id)
-                                              .filter(User.employee_id.isnot(None))
-                                          )).all()
-        
-        return render_template('users/add.html', employees=available_employees)
+        return render_template('users/add.html')
 
     @app.route('/users/<int:id>/edit', methods=['GET', 'POST'])
     @admin_required
@@ -663,15 +648,13 @@ def register_user_management_routes(app, admin_required):
             try:
                 username = request.form.get('username').strip()
                 role = request.form.get('role', 'user')
-                employee_id = request.form.get('employee_id') or None
                 password = request.form.get('password')
                 
                 # 检查用户名是否被其他用户占用
                 existing = User.query.filter_by(username=username).first()
                 if existing and existing.id != user.id:
                     flash('用户名已被其他用户占用！', 'error')
-                    return render_template('users/edit.html', user=user,
-                                         employees=Employee.query.filter_by(status='在职').all())
+                    return render_template('users/edit.html', user=user)
                 
                 # 不能修改admin用户的角色
                 if user.username == 'admin':
@@ -679,7 +662,6 @@ def register_user_management_routes(app, admin_required):
                 
                 user.username = username
                 user.role = role
-                user.employee_id = int(employee_id) if employee_id else None
                 
                 # 如果提供了新密码，则更新
                 if password:
@@ -693,18 +675,7 @@ def register_user_management_routes(app, admin_required):
                 db.session.rollback()
                 flash(f'更新失败：{str(e)}', 'error')
         
-        # 获取可用的员工（包括当前关联的员工）
-        available_employees = Employee.query.filter_by(status='在职')\
-                                          .filter(db.or_(
-                                              ~Employee.id.in_(
-                                                  db.session.query(User.employee_id)
-                                                  .filter(User.employee_id.isnot(None))
-                                                  .filter(User.id != user.id)
-                                              ),
-                                              Employee.id == user.employee_id
-                                          )).all()
-        
-        return render_template('users/edit.html', user=user, employees=available_employees)
+        return render_template('users/edit.html', user=user)
 
     @app.route('/users/<int:id>/delete', methods=['POST'])
     @admin_required

@@ -23,7 +23,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">搜索用户</label>
                                 <input type="text" class="form-control" name="search" 
-                                       value="{{ search }}" placeholder="输入用户名或员工姓名">
+                                       value="{{ search }}" placeholder="输入用户名">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">角色筛选</label>
@@ -51,7 +51,6 @@
                                 <tr>
                                     <th>用户名</th>
                                     <th>角色</th>
-                                    <th>关联员工</th>
                                     <th>创建时间</th>
                                     <th>状态</th>
                                     <th width="200">操作</th>
@@ -71,14 +70,6 @@
                                             <span class="badge bg-primary">管理员</span>
                                         {% else %}
                                             <span class="badge bg-secondary">普通用户</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if user.employee %}
-                                            {{ user.employee.name }}
-                                            <small class="text-muted">({{ user.employee.employee_no }})</small>
-                                        {% else %}
-                                            <span class="text-muted">未关联</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -116,7 +107,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">
+                                    <td colspan="5" class="text-center text-muted py-4">
                                         <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                         暂无用户数据
                                     </td>

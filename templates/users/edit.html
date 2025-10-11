@@ -52,25 +52,11 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">关联员工</label>
-                                    <select name="employee_id" class="form-select">
-                                        <option value="">不关联员工</option>
-                                        {% for employee in employees %}
-                                        <option value="{{ employee.id }}" {{ 'selected' if user.employee_id == employee.id else '' }}>
-                                            {{ employee.name }} ({{ employee.employee_no }}) - {{ employee.department.name if employee.department else '未分配部门' }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                    <div class="form-text">关联员工后，用户可以查看和编辑对应的员工信息</div>
-                                </div>
-                                
                                 <div class="alert alert-info">
                                     <h6><i class="fas fa-info-circle me-2"></i>用户信息</h6>
                                     <ul class="mb-0">
                                         <li><strong>创建时间</strong>：{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</li>
                                         <li><strong>当前角色</strong>：{{ '管理员' if user.role == 'admin' else '普通用户' }}</li>
-                                        <li><strong>关联员工</strong>：{{ user.employee.name if user.employee else '未关联' }}</li>
                                     </ul>
                                 </div>
                             </div>
