@@ -366,3 +366,178 @@ def register_export_routes(app):
             as_attachment=True,
             download_name=f'绩效考核_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         )
+
+
+# ==================== Excel导入功能 ====================
+
+def register_import_routes(app, admin_required):
+    @app.route('/import/employees', methods=['GET', 'POST'])
+    @admin_required
+    def import_employees():
+        """Excel批量导入员工"""
+        if request.method == 'POST':
+            if 'file' not in request.files:
+                flash('请选择文件', 'error')
+                return redirect(request.url)
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash('请选择文件', 'error')
+                return redirect(request.url)
+            
+            if file and file.filename.rsplit('.', 1)[1].lower() in ['xlsx', 'xls']:
+                try:
+                    # 保存上传的文件
+                    import os
+                    from werkzeug.utils import secure_filename
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    
+                    # 读取Excel文件
+                    import pandas as pd
+                    df = pd.read_excel(file_path)
+                    
+                    # 清理和验证数据
+                    df = df.fillna('')  # 填充空值
+                    
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    for index, row in df.iterrows():
+                        try:
+                            # 检查工号是否已存在
+                            if Employee.query.filter_by(employee_no=str(row.get('工号', ''))).first():
+                                error_count += 1
+                                errors.append(f"第{index+2}行：工号 {row.get('工号', '')} 已存在")
+                                continue
+                            
+                            # 查找部门ID
+                            department_id = None
+                            if row.get('部门名称'):
+                                from models import Department
+                                department = Department.query.filter_by(name=row['部门名称']).first()
+                                if department:
+                                    department_id = department.id
+                            
+                            # 创建员工记录
+                            employee = Employee(
+                                employee_no=str(row.get('工号', '')),
+                                name=str(row.get('姓名', '')),
+                                gender=str(row.get('性别', '')) if row.get('性别') else None,
+                                phone=str(row.get('电话', '')) if row.get('电话') else None,
+                                email=str(row.get('邮箱', '')) if row.get('邮箱') else None,
+                                department_id=department_id,
+                                position=str(row.get('职位', '')) if row.get('职位') else None,
+                                employment_type=str(row.get('聘用类型', '全职')),
+                                education=str(row.get('学历', '')) if row.get('学历') else None,
+                                status='在职'
+                            )
+                            
+                            # 处理日期字段
+                            if row.get('出生日期'):
+                                try:
+                                    if pd.notna(row['出生日期']):
+                                        employee.birth_date = pd.to_datetime(row['出生日期']).date()
+                                except:
+                                    pass
+                            
+                            if row.get('入职日期'):
+                                try:
+                                    if pd.notna(row['入职日期']):
+                                        employee.hire_date = pd.to_datetime(row['入职日期']).date()
+                                except:
+                                    pass
+                            
+                            db.session.add(employee)
+                            success_count += 1
+                            
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f"第{index+2}行：{str(e)}")
+                    
+                    # 提交事务
+                    if success_count > 0:
+                        db.session.commit()
+                        flash(f'导入完成！成功导入 {success_count} 条记录', 'success')
+                    
+                    if error_count > 0:
+                        flash(f'导入时发现 {error_count} 个错误', 'warning')
+                        # 显示前5个错误
+                        for error in errors[:5]:
+                            flash(error, 'error')
+                    
+                    # 删除临时文件
+                    os.remove(file_path)
+                    
+                    return redirect(url_for('employees'))
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'导入失败：{str(e)}', 'error')
+            else:
+                flash('请上传Excel文件（.xlsx或.xls格式）', 'error')
+        
+        return render_template('employees/import.html')
+
+
+# ==================== 统计报表功能 ====================
+
+def register_statistics_routes(app):
+    @app.route('/statistics')
+    @login_required
+    def statistics():
+        """统计报表首页"""
+        from models import Department, Performance, Attendance
+        from sqlalchemy import func, extract
+        from datetime import date
+        
+        # 基础统计
+        total_employees = Employee.query.filter_by(status='在职').count()
+        total_departments = Department.query.count()
+        
+        # 性别统计
+        gender_stats = db.session.query(
+            Employee.gender,
+            func.count(Employee.id).label('count')
+        ).filter_by(status='在职').group_by(Employee.gender).all()
+        
+        # 学历统计
+        education_stats = db.session.query(
+            Employee.education,
+            func.count(Employee.id).label('count')
+        ).filter_by(status='在职').group_by(Employee.education).all()
+        
+        # 部门统计
+        dept_stats = db.session.query(
+            Department.name,
+            func.count(Employee.id).label('count')
+        ).outerjoin(Employee, Department.id == Employee.department_id)\
+         .filter(Employee.status == '在职')\
+         .group_by(Department.name).all()
+        
+        # 绩效统计
+        perf_stats = db.session.query(
+            Performance.rating,
+            func.count(Performance.id).label('count')
+        ).group_by(Performance.rating).all()
+        
+        # 月度考勤统计（当年）
+        current_year = date.today().year
+        monthly_attendance = []
+        for month in range(1, 13):
+            count = db.session.query(Attendance).filter(
+                extract('year', Attendance.date) == current_year,
+                extract('month', Attendance.date) == month
+            ).count()
+            monthly_attendance.append({'month': month, 'count': count})
+        
+        return render_template('statistics/index.html',
+                             total_employees=total_employees,
+                             total_departments=total_departments,
+                             gender_stats=gender_stats,
+                             education_stats=education_stats,
+                             dept_stats=dept_stats,
+                             perf_stats=perf_stats,
+                             monthly_attendance=monthly_attendance)

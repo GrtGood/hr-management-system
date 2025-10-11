@@ -123,18 +123,52 @@ def employees():
     search = request.args.get('search', '')
     department_id = request.args.get('department', type=int)
     
+    # 高级搜索参数
+    is_advanced = request.args.get('advanced') == '1'
+    name = request.args.get('name', '')
+    employee_no = request.args.get('employee_no', '')
+    gender = request.args.get('gender', '')
+    position = request.args.get('position', '')
+    employment_type = request.args.get('employment_type', '')
+    education = request.args.get('education', '')
+    status = request.args.get('status', '')
+    hire_date_start = request.args.get('hire_date_start', '')
+    hire_date_end = request.args.get('hire_date_end', '')
+    
     query = Employee.query
     
-    # 搜索
-    if search:
-        query = query.filter(
-            (Employee.name.like(f'%{search}%')) |
-            (Employee.employee_no.like(f'%{search}%'))
-        )
-    
-    # 部门筛选
-    if department_id:
-        query = query.filter_by(department_id=department_id)
+    if is_advanced:
+        # 高级搜索逻辑
+        if name:
+            query = query.filter(Employee.name.like(f'%{name}%'))
+        if employee_no:
+            query = query.filter(Employee.employee_no.like(f'%{employee_no}%'))
+        if gender:
+            query = query.filter_by(gender=gender)
+        if department_id:
+            query = query.filter_by(department_id=department_id)
+        if position:
+            query = query.filter(Employee.position.like(f'%{position}%'))
+        if employment_type:
+            query = query.filter_by(employment_type=employment_type)
+        if education:
+            query = query.filter_by(education=education)
+        if status:
+            query = query.filter_by(status=status)
+        if hire_date_start:
+            query = query.filter(Employee.hire_date >= datetime.strptime(hire_date_start, '%Y-%m-%d').date())
+        if hire_date_end:
+            query = query.filter(Employee.hire_date <= datetime.strptime(hire_date_end, '%Y-%m-%d').date())
+    else:
+        # 基本搜索逻辑
+        if search:
+            query = query.filter(
+                (Employee.name.like(f'%{search}%')) |
+                (Employee.employee_no.like(f'%{search}%'))
+            )
+        # 部门筛选
+        if department_id:
+            query = query.filter_by(department_id=department_id)
     
     # 分页
     pagination = query.order_by(Employee.created_at.desc()).paginate(
@@ -560,12 +594,20 @@ def delete_performance(id):
 
 
 # 导入额外路由
-from app_routes import register_title_routes, register_training_routes, register_export_routes
+from app_routes import (
+    register_title_routes, 
+    register_training_routes, 
+    register_export_routes,
+    register_import_routes,
+    register_statistics_routes
+)
 
 # 注册路由
 register_title_routes(app, admin_required)
 register_training_routes(app, admin_required)
 register_export_routes(app)
+register_import_routes(app, admin_required)
+register_statistics_routes(app)
 
 
 # 初始化数据库和创建管理员账户
@@ -585,6 +627,106 @@ def init_database():
             print('管理员账户已创建：用户名 admin，密码 admin123')
         
         print('数据库初始化完成！')
+
+
+# ==================== 统计图表API ====================
+
+@app.route('/api/gender-stats')
+@login_required
+def gender_stats():
+    """员工性别分布统计"""
+    try:
+        stats = db.session.query(
+            Employee.gender,
+            func.count(Employee.id).label('count')
+        ).filter_by(status='在职').group_by(Employee.gender).all()
+        
+        labels = []
+        values = []
+        for gender, count in stats:
+            labels.append(gender or '未填写')
+            values.append(count)
+        
+        return jsonify({
+            'labels': labels,
+            'values': values
+        })
+    except Exception as e:
+        return jsonify({'labels': [], 'values': [], 'error': str(e)})
+
+
+@app.route('/api/department-stats')
+@login_required
+def department_stats():
+    """部门人数分布统计"""
+    try:
+        stats = db.session.query(
+            Department.name,
+            func.count(Employee.id).label('count')
+        ).outerjoin(Employee, Department.id == Employee.department_id)\
+         .filter(Employee.status == '在职')\
+         .group_by(Department.name).all()
+        
+        labels = []
+        values = []
+        for dept_name, count in stats:
+            if count > 0:  # 只显示有员工的部门
+                labels.append(dept_name)
+                values.append(count)
+        
+        return jsonify({
+            'labels': labels,
+            'values': values
+        })
+    except Exception as e:
+        return jsonify({'labels': [], 'values': [], 'error': str(e)})
+
+
+@app.route('/api/attendance-stats')
+@login_required
+def attendance_stats():
+    """近7天考勤趋势统计"""
+    try:
+        today = date.today()
+        labels = []
+        values = []
+        
+        for i in range(6, -1, -1):  # 近7天
+            check_date = today - timedelta(days=i)
+            count = Attendance.query.filter_by(date=check_date).count()
+            labels.append(check_date.strftime('%m-%d'))
+            values.append(count)
+        
+        return jsonify({
+            'labels': labels,
+            'values': values
+        })
+    except Exception as e:
+        return jsonify({'labels': [], 'values': [], 'error': str(e)})
+
+
+@app.route('/api/performance-stats')
+@login_required
+def performance_stats():
+    """绩效分布统计"""
+    try:
+        stats = db.session.query(
+            Performance.rating,
+            func.count(Performance.id).label('count')
+        ).group_by(Performance.rating).all()
+        
+        labels = []
+        values = []
+        for rating, count in stats:
+            labels.append(rating or '未评级')
+            values.append(count)
+        
+        return jsonify({
+            'labels': labels,
+            'values': values
+        })
+    except Exception as e:
+        return jsonify({'labels': [], 'values': [], 'error': str(e)})
 
 
 # 主程序入口

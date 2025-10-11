@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}统计报表 - 高校教职工人事信息管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up me-2"></i>统计报表</h2>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> 返回首页
+    </a>
+</div>
+
+<!-- 基础统计 -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-people display-4 text-primary"></i>
+                <h2 class="mt-3">{{ total_employees }}</h2>
+                <p class="text-muted">在职员工总数</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-diagram-3 display-4 text-success"></i>
+                <h2 class="mt-3">{{ total_departments }}</h2>
+                <p class="text-muted">部门总数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 统计图表 -->
+<div class="row">
+    <!-- 性别分布 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>员工性别分布
+            </div>
+            <div class="card-body">
+                {% if gender_stats %}
+                <canvas id="genderChart" height="300"></canvas>
+                {% else %}
+                <p class="text-center text-muted py-4">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 学历分布 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-mortarboard me-2"></i>员工学历分布
+            </div>
+            <div class="card-body">
+                {% if education_stats %}
+                <canvas id="educationChart" height="300"></canvas>
+                {% else %}
+                <p class="text-center text-muted py-4">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 部门人数分布 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart me-2"></i>部门人数分布
+            </div>
+            <div class="card-body">
+                {% if dept_stats %}
+                <canvas id="departmentChart" height="300"></canvas>
+                {% else %}
+                <p class="text-center text-muted py-4">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 绩效分布 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-award me-2"></i>绩效等级分布
+            </div>
+            <div class="card-body">
+                {% if perf_stats %}
+                <canvas id="performanceChart" height="300"></canvas>
+                {% else %}
+                <p class="text-center text-muted py-4">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 月度考勤趋势 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-calendar3 me-2"></i>{{ "2024年" if monthly_attendance else "" }}月度考勤统计
+    </div>
+    <div class="card-body">
+        {% if monthly_attendance %}
+        <canvas id="monthlyChart" height="100"></canvas>
+        {% else %}
+        <p class="text-center text-muted py-4">暂无考勤数据</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 详细数据表 -->
+<div class="row">
+    <!-- 性别统计表 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-table me-2"></i>性别统计详情
+            </div>
+            <div class="card-body">
+                {% if gender_stats %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>性别</th>
+                            <th>人数</th>
+                            <th>占比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gender, count in gender_stats %}
+                        <tr>
+                            <td>{{ gender or '未填写' }}</td>
+                            <td>{{ count }}</td>
+                            <td>{{ "%.1f%%" | format(count * 100 / total_employees) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 学历统计表 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-table me-2"></i>学历统计详情
+            </div>
+            <div class="card-body">
+                {% if education_stats %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>学历</th>
+                            <th>人数</th>
+                            <th>占比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for education, count in education_stats %}
+                        <tr>
+                            <td>{{ education or '未填写' }}</td>
+                            <td>{{ count }}</td>
+                            <td>{{ "%.1f%%" | format(count * 100 / total_employees) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js 图表脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 性别分布图
+{% if gender_stats %}
+const genderCtx = document.getElementById('genderChart').getContext('2d');
+new Chart(genderCtx, {
+    type: 'pie',
+    data: {
+        labels: [{% for gender, count in gender_stats %}'{{ gender or "未填写" }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for gender, count in gender_stats %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#FF9F40', '#C9CBCF']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+// 学历分布图
+{% if education_stats %}
+const educationCtx = document.getElementById('educationChart').getContext('2d');
+new Chart(educationCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for education, count in education_stats %}'{{ education or "未填写" }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for education, count in education_stats %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56', '#FF9F40']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+// 部门人数分布图
+{% if dept_stats %}
+const deptCtx = document.getElementById('departmentChart').getContext('2d');
+new Chart(deptCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for dept_name, count in dept_stats %}'{{ dept_name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: '人数',
+            data: [{% for dept_name, count in dept_stats %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// 绩效分布图
+{% if perf_stats %}
+const perfCtx = document.getElementById('performanceChart').getContext('2d');
+new Chart(perfCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for rating, count in perf_stats %}'{{ rating or "未评级" }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for rating, count in perf_stats %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#FF9F40']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+// 月度考勤图
+{% if monthly_attendance %}
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(monthlyCtx, {
+    type: 'line',
+    data: {
+        labels: [{% for item in monthly_attendance %}'{{ item.month }}月'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: '考勤记录数',
+            data: [{% for item in monthly_attendance %}{{ item.count }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
