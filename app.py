@@ -599,7 +599,8 @@ from app_routes import (
     register_training_routes, 
     register_export_routes,
     register_import_routes,
-    register_statistics_routes
+    register_statistics_routes,
+    register_user_management_routes
 )
 
 # 注册路由
@@ -608,6 +609,7 @@ register_training_routes(app, admin_required)
 register_export_routes(app)
 register_import_routes(app, admin_required)
 register_statistics_routes(app)
+register_user_management_routes(app, admin_required)
 
 
 # 初始化数据库和创建管理员账户

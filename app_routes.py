@@ -1,9 +1,9 @@
-# 这个文件包含职称评审、培训管理和导出功能的路由
+# 这个文件包含职称评审、培训管理、导出功能和用户管理的路由
 # 需要在app.py末尾导入这些路由
 
 from flask import request, redirect, url_for, flash, render_template, send_file
-from flask_login import login_required
-from models import db, Employee, Title, Training
+from flask_login import login_required, current_user
+from models import db, Employee, Title, Training, User
 from datetime import datetime
 from openpyxl import Workbook
 from io import BytesIO
@@ -564,3 +564,184 @@ def register_statistics_routes(app):
                              dept_stats=dept_stats,
                              perf_stats=perf_stats,
                              monthly_attendance=monthly_attendance)
+
+
+# ==================== 用户管理功能 ====================
+
+def register_user_management_routes(app, admin_required):
+    
+    @app.route('/users')
+    @admin_required  # 只有管理员可以访问
+    def users():
+        """用户管理列表"""
+        page = request.args.get('page', 1, type=int)
+        search = request.args.get('search', '').strip()
+        role_filter = request.args.get('role')
+        
+        query = User.query
+        
+        # 搜索过滤
+        if search:
+            query = query.filter(
+                db.or_(
+                    User.username.ilike(f'%{search}%'),
+                    User.employee.has(Employee.name.ilike(f'%{search}%'))
+                )
+            )
+        
+        # 角色过滤
+        if role_filter:
+            query = query.filter_by(role=role_filter)
+        
+        # 分页
+        pagination = query.order_by(User.created_at.desc()).paginate(
+            page=page, per_page=app.config['ITEMS_PER_PAGE'], error_out=False
+        )
+        
+        return render_template('users/list.html',
+                             users=pagination.items,
+                             pagination=pagination,
+                             search=search,
+                             role_filter=role_filter)
+
+    @app.route('/users/add', methods=['GET', 'POST'])
+    @admin_required
+    def add_user():
+        """添加用户"""
+        if request.method == 'POST':
+            try:
+                username = request.form.get('username').strip()
+                password = request.form.get('password')
+                role = request.form.get('role', 'user')
+                employee_id = request.form.get('employee_id') or None
+                
+                # 验证用户名是否已存在
+                if User.query.filter_by(username=username).first():
+                    flash('用户名已存在！', 'error')
+                    return render_template('users/add.html', 
+                                         employees=Employee.query.filter_by(status='在职').all())
+                
+                # 创建用户
+                user = User(
+                    username=username,
+                    role=role,
+                    employee_id=int(employee_id) if employee_id else None
+                )
+                user.set_password(password)
+                
+                db.session.add(user)
+                db.session.commit()
+                
+                flash('用户创建成功！', 'success')
+                return redirect(url_for('users'))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'创建失败：{str(e)}', 'error')
+        
+        # 获取没有关联用户账号的员工
+        available_employees = Employee.query.filter_by(status='在职')\
+                                          .filter(~Employee.id.in_(
+                                              db.session.query(User.employee_id)
+                                              .filter(User.employee_id.isnot(None))
+                                          )).all()
+        
+        return render_template('users/add.html', employees=available_employees)
+
+    @app.route('/users/<int:id>/edit', methods=['GET', 'POST'])
+    @admin_required
+    def edit_user(id):
+        """编辑用户"""
+        user = User.query.get_or_404(id)
+        
+        # 不能编辑admin用户的角色
+        if user.username == 'admin' and current_user.id != user.id:
+            flash('不能编辑admin用户！', 'error')
+            return redirect(url_for('users'))
+        
+        if request.method == 'POST':
+            try:
+                username = request.form.get('username').strip()
+                role = request.form.get('role', 'user')
+                employee_id = request.form.get('employee_id') or None
+                password = request.form.get('password')
+                
+                # 检查用户名是否被其他用户占用
+                existing = User.query.filter_by(username=username).first()
+                if existing and existing.id != user.id:
+                    flash('用户名已被其他用户占用！', 'error')
+                    return render_template('users/edit.html', user=user,
+                                         employees=Employee.query.filter_by(status='在职').all())
+                
+                # 不能修改admin用户的角色
+                if user.username == 'admin':
+                    role = 'admin'
+                
+                user.username = username
+                user.role = role
+                user.employee_id = int(employee_id) if employee_id else None
+                
+                # 如果提供了新密码，则更新
+                if password:
+                    user.set_password(password)
+                
+                db.session.commit()
+                flash('用户更新成功！', 'success')
+                return redirect(url_for('users'))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'更新失败：{str(e)}', 'error')
+        
+        # 获取可用的员工（包括当前关联的员工）
+        available_employees = Employee.query.filter_by(status='在职')\
+                                          .filter(db.or_(
+                                              ~Employee.id.in_(
+                                                  db.session.query(User.employee_id)
+                                                  .filter(User.employee_id.isnot(None))
+                                                  .filter(User.id != user.id)
+                                              ),
+                                              Employee.id == user.employee_id
+                                          )).all()
+        
+        return render_template('users/edit.html', user=user, employees=available_employees)
+
+    @app.route('/users/<int:id>/delete', methods=['POST'])
+    @admin_required
+    def delete_user(id):
+        """删除用户"""
+        user = User.query.get_or_404(id)
+        
+        # 不能删除admin用户和自己
+        if user.username == 'admin' or user.id == current_user.id:
+            flash('不能删除admin用户或自己的账号！', 'error')
+            return redirect(url_for('users'))
+        
+        try:
+            db.session.delete(user)
+            db.session.commit()
+            flash('用户已删除', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'删除失败：{str(e)}', 'error')
+        
+        return redirect(url_for('users'))
+
+    @app.route('/users/<int:id>/reset-password', methods=['POST'])
+    @admin_required 
+    def reset_user_password(id):
+        """重置用户密码"""
+        user = User.query.get_or_404(id)
+        
+        try:
+            # 重置为默认密码
+            default_password = '123456'
+            user.set_password(default_password)
+            db.session.commit()
+            
+            flash(f'用户 {user.username} 的密码已重置为：{default_password}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'密码重置失败：{str(e)}', 'error')
+        
+        return redirect(url_for('users'))

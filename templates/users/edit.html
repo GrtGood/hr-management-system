@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}编辑用户{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user-edit me-2"></i>编辑用户 - {{ user.username }}
+                    </h5>
+                </div>
+                
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="username" required 
+                                           value="{{ user.username }}" {{ 'readonly' if user.username == 'admin' else '' }}>
+                                    {% if user.username == 'admin' %}
+                                    <div class="form-text text-warning">超级管理员用户名不能修改</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">新密码</label>
+                                    <input type="password" class="form-control" name="password" 
+                                           placeholder="留空表示不修改密码" minlength="6">
+                                    <div class="form-text">如需修改密码，请输入新密码（至少6位）</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">用户角色 <span class="text-danger">*</span></label>
+                                    <select name="role" class="form-select" required {{ 'disabled' if user.username == 'admin' else '' }}>
+                                        <option value="user" {{ 'selected' if user.role == 'user' else '' }}>普通用户</option>
+                                        <option value="admin" {{ 'selected' if user.role == 'admin' else '' }}>管理员</option>
+                                    </select>
+                                    {% if user.username == 'admin' %}
+                                    <input type="hidden" name="role" value="admin">
+                                    <div class="form-text text-warning">超级管理员角色不能修改</div>
+                                    {% else %}
+                                    <div class="form-text">
+                                        <strong>普通用户</strong>：只能查看和管理自己的信息<br>
+                                        <strong>管理员</strong>：可以管理所有数据和系统设置
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">关联员工</label>
+                                    <select name="employee_id" class="form-select">
+                                        <option value="">不关联员工</option>
+                                        {% for employee in employees %}
+                                        <option value="{{ employee.id }}" {{ 'selected' if user.employee_id == employee.id else '' }}>
+                                            {{ employee.name }} ({{ employee.employee_no }}) - {{ employee.department.name if employee.department else '未分配部门' }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">关联员工后，用户可以查看和编辑对应的员工信息</div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle me-2"></i>用户信息</h6>
+                                    <ul class="mb-0">
+                                        <li><strong>创建时间</strong>：{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</li>
+                                        <li><strong>当前角色</strong>：{{ '管理员' if user.role == 'admin' else '普通用户' }}</li>
+                                        <li><strong>关联员工</strong>：{{ user.employee.name if user.employee else '未关联' }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>保存修改
+                            </button>
+                            <a href="{{ url_for('users') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>返回
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

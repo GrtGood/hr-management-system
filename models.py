@@ -26,6 +26,20 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """验证密码"""
         return check_password_hash(self.password_hash, password)
+    
+    def is_admin(self):
+        """检查是否是管理员"""
+        return self.role == 'admin'
+    
+    def is_user(self):
+        """检查是否是普通用户"""
+        return self.role == 'user'
+    
+    def get_display_name(self):
+        """获取显示名称"""
+        if self.employee:
+            return self.employee.name
+        return self.username
 
 
 # 部门表
