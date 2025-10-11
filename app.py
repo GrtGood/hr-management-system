@@ -44,6 +44,70 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
+# 获取图表数据
+def get_chart_data():
+    """获取首页图表数据"""
+    # 员工性别分布
+    gender_stats = db.session.query(
+        Employee.gender,
+        func.count(Employee.id)
+    ).filter(Employee.status=='在职').group_by(Employee.gender).all()
+    
+    gender_labels = [g[0] if g[0] else '未知' for g in gender_stats]
+    gender_data = [g[1] for g in gender_stats]
+    
+    # 部门人数分布
+    dept_stats = db.session.query(
+        Department.name,
+        func.count(Employee.id)
+    ).outerjoin(Employee, Department.id==Employee.department_id
+    ).filter(Employee.status=='在职'
+    ).group_by(Department.id, Department.name).all()
+    
+    dept_labels = [d[0] for d in dept_stats]
+    dept_data = [d[1] for d in dept_stats]
+    
+    # 月度考勤趋势（近6个月）
+    today = date.today()
+    attendance_stats = []
+    attendance_labels = []
+    
+    for i in range(5, -1, -1):
+        month = today.month - i
+        year = today.year
+        if month <= 0:
+            month += 12
+            year -= 1
+        
+        count = Attendance.query.filter(
+            extract('year', Attendance.date) == year,
+            extract('month', Attendance.date) == month
+        ).count()
+        
+        attendance_labels.append(f'{year}-{month:02d}')
+        attendance_stats.append(count)
+    
+    # 绩效评级分布
+    perf_stats = db.session.query(
+        Performance.rating,
+        func.count(Performance.id)
+    ).group_by(Performance.rating).all()
+    
+    performance_labels = [p[0] if p[0] else '未评级' for p in perf_stats]
+    performance_data = [p[1] for p in perf_stats]
+    
+    return {
+        'gender_labels': gender_labels,
+        'gender_data': gender_data,
+        'dept_labels': dept_labels,
+        'dept_data': dept_data,
+        'attendance_labels': attendance_labels,
+        'attendance_data': attendance_stats,
+        'performance_labels': performance_labels,
+        'performance_data': performance_data
+    }
+
+
 # ==================== 首页和登录 ====================
 
 @app.route('/')
@@ -72,13 +136,17 @@ def index():
     # 最近员工
     recent_employees = Employee.query.order_by(Employee.created_at.desc()).limit(5).all()
     
+    # 图表数据
+    chart_data = get_chart_data()
+    
     return render_template('index.html',
                          total_employees=total_employees,
                          total_departments=total_departments,
                          today_attendances=today_attendances,
                          pending_titles=pending_titles,
                          monthly_trainings=monthly_trainings,
-                         recent_employees=recent_employees)
+                         recent_employees=recent_employees,
+                         chart_data=chart_data)
 
 
 @app.route('/login', methods=['GET', 'POST'])

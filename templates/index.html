@@ -82,6 +82,53 @@
 </div>
 {% endif %}
 
+<!-- 数据可视化图表 -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>员工性别分布
+            </div>
+            <div class="card-body">
+                <canvas id="genderChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart me-2"></i>部门人数分布
+            </div>
+            <div class="card-body">
+                <canvas id="departmentChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-graph-up me-2"></i>月度考勤趋势（近6个月）
+            </div>
+            <div class="card-body">
+                <canvas id="attendanceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-star me-2"></i>绩效评级分布
+            </div>
+            <div class="card-body">
+                <canvas id="performanceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 最近添加的员工 -->
 <div class="card">
     <div class="card-header">
@@ -128,4 +175,123 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Chart.js脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// 员工性别分布饼图
+const genderCtx = document.getElementById('genderChart');
+new Chart(genderCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ chart_data.gender_labels | tojson }},
+        datasets: [{
+            data: {{ chart_data.gender_data | tojson }},
+            backgroundColor: [
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(201, 203, 207, 0.8)'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// 部门人数柱状图
+const deptCtx = document.getElementById('departmentChart');
+new Chart(deptCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ chart_data.dept_labels | tojson }},
+        datasets: [{
+            label: '员工人数',
+            data: {{ chart_data.dept_data | tojson }},
+            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// 月度考勤趋势折线图
+const attendCtx = document.getElementById('attendanceChart');
+new Chart(attendCtx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_data.attendance_labels | tojson }},
+        datasets: [{
+            label: '考勤人次',
+            data: {{ chart_data.attendance_data | tojson }},
+            borderColor: 'rgba(153, 102, 255, 1)',
+            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+            tension: 0.3,
+            fill: true,
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// 绩效评级分布饼图
+const perfCtx = document.getElementById('performanceChart');
+new Chart(perfCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ chart_data.performance_labels | tojson }},
+        datasets: [{
+            data: {{ chart_data.performance_data | tojson }},
+            backgroundColor: [
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+</script>
 {% endblock %}

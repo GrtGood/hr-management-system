@@ -366,3 +366,211 @@ def register_export_routes(app):
             as_attachment=True,
             download_name=f'绩效考核_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         )
+    
+    
+    # Excel导入功能
+    @app.route('/import/employees', methods=['GET', 'POST'])
+    @login_required
+    def import_employees():
+        """批量导入员工信息"""
+        if request.method == 'POST':
+            if 'file' not in request.files:
+                flash('请选择文件', 'error')
+                return redirect(request.url)
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash('未选择文件', 'error')
+                return redirect(request.url)
+            
+            if file and file.filename.endswith(('.xlsx', '.xls')):
+                try:
+                    from openpyxl import load_workbook
+                    from models import Department
+                    
+                    wb = load_workbook(file)
+                    ws = wb.active
+                    
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    # 跳过表头，从第二行开始
+                    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                        try:
+                            if not row[0] or not row[1]:  # 工号和姓名必填
+                                continue
+                            
+                            # 查找或创建部门
+                            dept = None
+                            if row[7]:  # 部门名称
+                                dept = Department.query.filter_by(name=row[7]).first()
+                            
+                            employee = Employee(
+                                employee_no=str(row[0]),
+                                name=str(row[1]),
+                                gender=row[2] if row[2] else None,
+                                birth_date=row[3] if row[3] else None,
+                                id_card=row[4] if row[4] else None,
+                                phone=row[5] if row[5] else None,
+                                email=row[6] if row[6] else None,
+                                department_id=dept.id if dept else None,
+                                position=row[8] if row[8] else None,
+                                employment_type=row[9] if row[9] else None,
+                                hire_date=row[10] if row[10] else None,
+                                status=row[11] if row[11] else '在职',
+                                education=row[12] if row[12] else None,
+                                major=row[13] if row[13] else None,
+                                graduate_school=row[14] if row[14] else None
+                            )
+                            
+                            db.session.add(employee)
+                            success_count += 1
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f'第{row_idx}行: {str(e)}')
+                    
+                    db.session.commit()
+                    
+                    if success_count > 0:
+                        flash(f'成功导入 {success_count} 条员工记录', 'success')
+                    if error_count > 0:
+                        flash(f'失败 {error_count} 条。错误信息：{"; ".join(errors[:5])}', 'warning')
+                    
+                    return redirect(url_for('employees'))
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'导入失败：{str(e)}', 'error')
+            else:
+                flash('文件格式不正确，请上传.xlsx或.xls文件', 'error')
+        
+        return render_template('employees/import.html')
+    
+    
+    # 统计报表页面
+    @app.route('/reports')
+    @login_required
+    def reports():
+        """统计报表页面"""
+        from models import Department, Attendance, Performance
+        from sqlalchemy import func, extract
+        from datetime import date
+        
+        today = date.today()
+        
+        # 基础统计
+        total_employees = Employee.query.filter_by(status='在职').count()
+        total_departments = Department.query.count()
+        
+        # 本月考勤
+        this_month_attendance = Attendance.query.filter(
+            extract('year', Attendance.date) == today.year,
+            extract('month', Attendance.date) == today.month
+        ).count()
+        
+        # 本年度培训
+        this_year_trainings = Training.query.filter(
+            extract('year', Training.start_date) == today.year
+        ).count()
+        
+        # 按性别统计
+        gender_stats = [{'gender': g[0], 'count': g[1]} for g in db.session.query(
+            Employee.gender,
+            func.count(Employee.id)
+        ).filter(Employee.status=='在职').group_by(Employee.gender).all()]
+        
+        # 按学历统计
+        education_stats = [{'education': e[0], 'count': e[1]} for e in db.session.query(
+            Employee.education,
+            func.count(Employee.id)
+        ).filter(Employee.status=='在职').group_by(Employee.education).all()]
+        
+        # 按部门统计（包含负责人信息）
+        dept_data = db.session.query(
+            Department,
+            func.count(Employee.id).label('emp_count')
+        ).outerjoin(Employee, Department.id==Employee.department_id
+        ).filter(Employee.status=='在职'
+        ).group_by(Department.id).all()
+        
+        department_stats = []
+        for dept, emp_count in dept_data:
+            manager_name = None
+            if dept.manager_id:
+                manager = Employee.query.get(dept.manager_id)
+                if manager:
+                    manager_name = manager.name
+            
+            department_stats.append({
+                'name': dept.name,
+                'code': dept.code,
+                'emp_count': emp_count,
+                'manager_name': manager_name
+            })
+        
+        # 考勤状态统计（本月）
+        attendance_status_stats = [{'status': a[0], 'count': a[1]} for a in db.session.query(
+            Attendance.status,
+            func.count(Attendance.id)
+        ).filter(
+            extract('year', Attendance.date) == today.year,
+            extract('month', Attendance.date) == today.month
+        ).group_by(Attendance.status).all()]
+        
+        # 绩效评级统计
+        performance_stats = [{'rating': p[0], 'count': p[1]} for p in db.session.query(
+            Performance.rating,
+            func.count(Performance.id)
+        ).group_by(Performance.rating).all()]
+        
+        total_performances = sum([p['count'] for p in performance_stats])
+        
+        # 平均绩效得分
+        avg_score_result = db.session.query(func.avg(Performance.total_score)).scalar()
+        avg_performance_score = float(avg_score_result) if avg_score_result else 0
+        
+        # 职称统计
+        title_stats = [{'title_name': t[0], 'count': t[1]} for t in db.session.query(
+            Title.title_name,
+            func.count(Title.id)
+        ).filter(Title.status=='已通过').group_by(Title.title_name).all()]
+        
+        # 职称审核状态统计
+        title_status_stats = [{'status': t[0], 'count': t[1]} for t in db.session.query(
+            Title.status,
+            func.count(Title.id)
+        ).group_by(Title.status).all()]
+        
+        # 培训类型统计
+        training_type_stats = [{'training_type': t[0], 'count': t[1]} for t in db.session.query(
+            Training.training_type,
+            func.count(Training.id)
+        ).group_by(Training.training_type).all()]
+        
+        # 培训总体数据
+        total_trainings = Training.query.count()
+        total_training_hours = db.session.query(func.sum(Training.duration_hours)).scalar() or 0
+        total_training_cost = db.session.query(func.sum(Training.cost)).scalar() or 0
+        
+        stats = {
+            'total_employees': total_employees,
+            'total_departments': total_departments,
+            'this_month_attendance': this_month_attendance,
+            'this_year_trainings': this_year_trainings,
+            'gender_stats': gender_stats,
+            'education_stats': education_stats,
+            'department_stats': department_stats,
+            'attendance_status_stats': attendance_status_stats,
+            'performance_stats': performance_stats,
+            'total_performances': total_performances,
+            'avg_performance_score': avg_performance_score,
+            'title_stats': title_stats,
+            'title_status_stats': title_status_stats,
+            'training_type_stats': training_type_stats,
+            'total_trainings': total_trainings,
+            'total_training_hours': total_training_hours,
+            'total_training_cost': total_training_cost
+        }
+        
+        return render_template('reports.html', stats=stats)
