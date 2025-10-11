@@ -375,7 +375,18 @@ def register_import_routes(app, admin_required):
     @admin_required
     def import_employees():
         """Excel批量导入员工"""
+        # 检查pandas是否可用
+        try:
+            import pandas as pd
+            pandas_available = True
+        except ImportError:
+            pandas_available = False
+        
         if request.method == 'POST':
+            if not pandas_available:
+                flash('系统缺少pandas库，Excel导入功能暂时不可用。请联系管理员安装pandas库。', 'error')
+                return render_template('employees/import.html')
+                
             if 'file' not in request.files:
                 flash('请选择文件', 'error')
                 return redirect(request.url)
@@ -390,16 +401,28 @@ def register_import_routes(app, admin_required):
                     # 保存上传的文件
                     import os
                     from werkzeug.utils import secure_filename
+                    
+                    # 确保上传目录存在
+                    upload_folder = app.config['UPLOAD_FOLDER']
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder, exist_ok=True)
+                    
                     filename = secure_filename(file.filename)
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file_path = os.path.join(upload_folder, filename)
                     file.save(file_path)
                     
                     # 读取Excel文件
-                    import pandas as pd
-                    df = pd.read_excel(file_path)
-                    
-                    # 清理和验证数据
-                    df = df.fillna('')  # 填充空值
+                    try:
+                        import pandas as pd
+                        df = pd.read_excel(file_path)
+                        # 清理和验证数据
+                        df = df.fillna('')  # 填充空值
+                    except ImportError:
+                        flash('缺少pandas库，无法导入Excel文件。请运行: pip install pandas', 'error')
+                        return redirect(request.url)
+                    except Exception as e:
+                        flash(f'读取Excel文件失败：{str(e)}', 'error')
+                        return redirect(request.url)
                     
                     success_count = 0
                     error_count = 0
