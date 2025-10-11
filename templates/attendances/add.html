@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}添加考勤{% endblock %}
+{% block content %}
+<h2>{{ "添加" if not attendance else "编辑" }}考勤记录</h2>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">员工 *</label>
+                <select class="form-select" name="employee_id" required>
+                    <option value="">请选择</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if attendance and attendance.employee_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">日期 *</label>
+                <input type="date" class="form-control" name="date" value="{{ attendance.date if attendance else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">上班时间</label>
+                <input type="time" class="form-control" name="check_in_time" value="{{ attendance.check_in_time if attendance else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">下班时间</label>
+                <input type="time" class="form-control" name="check_out_time" value="{{ attendance.check_out_time if attendance else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">状态</label>
+                <select class="form-select" name="status">
+                    <option value="正常">正常</option>
+                    <option value="迟到">迟到</option>
+                    <option value="早退">早退</option>
+                    <option value="缺勤">缺勤</option>
+                    <option value="请假">请假</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{{ url_for('attendances') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

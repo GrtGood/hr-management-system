@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}添加绩效考核{% endblock %}
+{% block content %}
+<h2>{{ "添加" if not performance else "编辑" }}绩效考核</h2>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">员工 *</label>
+                <select class="form-select" name="employee_id" required>
+                    <option value="">请选择</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if performance and performance.employee_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">年度 *</label>
+                    <input type="number" class="form-control" name="year" value="{{ performance.year if performance else '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">季度 *</label>
+                    <select class="form-select" name="quarter" required>
+                        <option value="1">第一季度</option>
+                        <option value="2">第二季度</option>
+                        <option value="3">第三季度</option>
+                        <option value="4">第四季度</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">教学评分 (0-100)</label>
+                    <input type="number" class="form-control" name="teaching_score" min="0" max="100" value="{{ performance.teaching_score if performance else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">科研评分 (0-100)</label>
+                    <input type="number" class="form-control" name="research_score" min="0" max="100" value="{{ performance.research_score if performance else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">服务评分 (0-100)</label>
+                    <input type="number" class="form-control" name="service_score" min="0" max="100" value="{{ performance.service_score if performance else 0 }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">考核人</label>
+                <input type="text" class="form-control" name="evaluator" value="{{ performance.evaluator if performance else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">考核日期</label>
+                <input type="date" class="form-control" name="evaluation_date" value="{{ performance.evaluation_date if performance else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">评语</label>
+                <textarea class="form-control" name="comments" rows="3">{{ performance.comments if performance else '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{{ url_for('performances') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ "添加" if not department else "编辑" }}部门{% endblock %}
+{% block content %}
+<h2>{{ "添加" if not department else "编辑" }}部门</h2>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">部门代码 *</label>
+                <input type="text" class="form-control" name="code" value="{{ department.code if department else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">部门名称 *</label>
+                <input type="text" class="form-control" name="name" value="{{ department.name if department else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">描述</label>
+                <textarea class="form-control" name="description" rows="3">{{ department.description if department else '' }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">负责人</label>
+                <select class="form-select" name="manager_id">
+                    <option value="">请选择</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if department and department.manager_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{{ url_for('departments') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

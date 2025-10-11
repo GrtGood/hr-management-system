@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}员工详情{% endblock %}
+{% block content %}
+<h2><i class="bi bi-person me-2"></i>员工详情</h2>
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 mb-3"><strong>工号：</strong>{{ employee.employee_no }}</div>
+            <div class="col-md-6 mb-3"><strong>姓名：</strong>{{ employee.name }}</div>
+            <div class="col-md-6 mb-3"><strong>性别：</strong>{{ employee.gender or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>出生日期：</strong>{{ employee.birth_date or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>身份证号：</strong>{{ employee.id_card or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>电话：</strong>{{ employee.phone or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>邮箱：</strong>{{ employee.email or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>部门：</strong>{{ employee.department.name if employee.department else '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>职位：</strong>{{ employee.position or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>聘用类型：</strong>{{ employee.employment_type or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>入职日期：</strong>{{ employee.hire_date or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>状态：</strong><span class="badge {{ 'bg-success' if employee.status == '在职' else 'bg-secondary' }}">{{ employee.status }}</span></div>
+            <div class="col-md-6 mb-3"><strong>学历：</strong>{{ employee.education or '-' }}</div>
+            <div class="col-md-6 mb-3"><strong>专业：</strong>{{ employee.major or '-' }}</div>
+            <div class="col-md-12 mb-3"><strong>毕业院校：</strong>{{ employee.graduate_school or '-' }}</div>
+            <div class="col-md-12 mb-3"><strong>地址：</strong>{{ employee.address or '-' }}</div>
+            <div class="col-md-12 mb-3"><strong>备注：</strong>{{ employee.remarks or '-' }}</div>
+        </div>
+        <a href="{{ url_for('employees') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('edit_employee', id=employee.id) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> 编辑</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

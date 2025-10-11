@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}添加职称{% endblock %}
+{% block content %}
+<h2>{{ "添加" if not title else "编辑" }}职称评审</h2>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">员工 *</label>
+                <select class="form-select" name="employee_id" required>
+                    <option value="">请选择</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if title and title.employee_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">职称名称 *</label>
+                <input type="text" class="form-control" name="title_name" value="{{ title.title_name if title else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">职称级别</label>
+                <select class="form-select" name="title_level">
+                    <option value="">请选择</option>
+                    <option value="初级">初级</option>
+                    <option value="中级">中级</option>
+                    <option value="高级">高级</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">申请日期</label>
+                <input type="date" class="form-control" name="application_date" value="{{ title.application_date if title else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">状态</label>
+                <select class="form-select" name="status">
+                    <option value="待审核">待审核</option>
+                    <option value="已通过">已通过</option>
+                    <option value="未通过">未通过</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{{ url_for('titles') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}添加培训{% endblock %}
+{% block content %}
+<h2>{{ "添加" if not training else "编辑" }}培训记录</h2>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">员工 *</label>
+                <select class="form-select" name="employee_id" required>
+                    <option value="">请选择</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if training and training.employee_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">培训名称 *</label>
+                <input type="text" class="form-control" name="training_name" value="{{ training.training_name if training else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">培训类型</label>
+                <select class="form-select" name="training_type">
+                    <option value="">请选择</option>
+                    <option value="内部培训">内部培训</option>
+                    <option value="外部培训">外部培训</option>
+                    <option value="在线培训">在线培训</option>
+                </select>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">开始日期</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ training.start_date if training else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">结束日期</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ training.end_date if training else '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">培训时长(小时)</label>
+                <input type="number" class="form-control" name="duration_hours" value="{{ training.duration_hours if training else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">培训地点</label>
+                <input type="text" class="form-control" name="location" value="{{ training.location if training else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">讲师</label>
+                <input type="text" class="form-control" name="instructor" value="{{ training.instructor if training else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">费用</label>
+                <input type="number" class="form-control" name="cost" value="{{ training.cost if training else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">状态</label>
+                <select class="form-select" name="status">
+                    <option value="已计划">已计划</option>
+                    <option value="进行中">进行中</option>
+                    <option value="已完成">已完成</option>
+                    <option value="已取消">已取消</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{{ url_for('trainings') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

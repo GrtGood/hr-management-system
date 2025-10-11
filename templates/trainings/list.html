@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}培训发展{% endblock %}
+{% block content %}
+<h2><i class="bi bi-book me-2"></i>培训发展</h2>
+{% if current_user.role == 'admin' %}
+<a href="{{ url_for('add_training') }}" class="btn btn-primary mb-3"><i class="bi bi-plus"></i> 添加培训</a>
+{% endif %}
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr><th>培训名称</th><th>员工</th><th>类型</th><th>开始日期</th><th>时长(小时)</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for training in trainings %}
+            <tr>
+                <td>{{ training.training_name }}</td>
+                <td>{{ training.employee.name }}</td>
+                <td>{{ training.training_type or '-' }}</td>
+                <td>{{ training.start_date or '-' }}</td>
+                <td>{{ training.duration_hours or '-' }}</td>
+                <td><span class="badge bg-info">{{ training.status }}</span></td>
+                <td>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('edit_training', id=training.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

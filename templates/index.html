@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 高校教职工人事信息管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-house-door me-2"></i>系统首页</h2>
+    <div>
+        {% if current_user.role == 'admin' %}
+            <span class="badge bg-danger"><i class="bi bi-shield-check"></i> 管理员</span>
+        {% else %}
+            <span class="badge bg-info"><i class="bi bi-person"></i> 普通用户</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="bi bi-people" style="font-size: 2rem;"></i>
+            <h3>{{ total_employees }}</h3>
+            <p>在职员工</p>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <i class="bi bi-diagram-3" style="font-size: 2rem;"></i>
+            <h3>{{ total_departments }}</h3>
+            <p>部门数量</p>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+            <h3>{{ today_attendances }}</h3>
+            <p>今日考勤</p>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <i class="bi bi-award" style="font-size: 2rem;"></i>
+            <h3>{{ pending_titles }}</h3>
+            <p>待审职称</p>
+        </div>
+    </div>
+</div>
+
+<!-- 快捷操作 -->
+{% if current_user.role == 'admin' %}
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-lightning me-2"></i>快捷操作
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('add_employee') }}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-person-plus"></i> 添加员工
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('add_department') }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-plus-circle"></i> 添加部门
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('add_attendance') }}" class="btn btn-outline-info w-100">
+                    <i class="bi bi-calendar-plus"></i> 考勤录入
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('export_employees') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-download"></i> 导出数据
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 最近添加的员工 -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock-history me-2"></i>最近添加的员工
+    </div>
+    <div class="card-body">
+        {% if recent_employees %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>工号</th>
+                        <th>姓名</th>
+                        <th>性别</th>
+                        <th>部门</th>
+                        <th>职位</th>
+                        <th>状态</th>
+                        <th>入职日期</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in recent_employees %}
+                    <tr>
+                        <td>{{ emp.employee_no }}</td>
+                        <td>
+                            <a href="{{ url_for('employee_detail', id=emp.id) }}">{{ emp.name }}</a>
+                        </td>
+                        <td>{{ emp.gender or '-' }}</td>
+                        <td>{{ emp.department.name if emp.department else '-' }}</td>
+                        <td>{{ emp.position or '-' }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if emp.status == '在职' else 'bg-secondary' }}">
+                                {{ emp.status }}
+                            </span>
+                        </td>
+                        <td>{{ emp.hire_date or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">暂无员工数据</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

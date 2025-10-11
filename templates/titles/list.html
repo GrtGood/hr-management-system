@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}职称评审{% endblock %}
+{% block content %}
+<h2><i class="bi bi-award me-2"></i>职称评审</h2>
+{% if current_user.role == 'admin' %}
+<a href="{{ url_for('add_title') }}" class="btn btn-primary mb-3"><i class="bi bi-plus"></i> 添加职称</a>
+{% endif %}
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr><th>员工</th><th>职称名称</th><th>级别</th><th>申请日期</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for title in titles %}
+            <tr>
+                <td>{{ title.employee.name }}</td>
+                <td>{{ title.title_name }}</td>
+                <td>{{ title.title_level or '-' }}</td>
+                <td>{{ title.application_date or '-' }}</td>
+                <td><span class="badge {{ 'bg-warning' if title.status == '待审核' else 'bg-success' }}">{{ title.status }}</span></td>
+                <td>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('edit_title', id=title.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
