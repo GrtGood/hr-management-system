@@ -50,6 +50,7 @@ class Department(db.Model):
     
     # 关系
     employees = db.relationship('Employee', backref='department', foreign_keys='Employee.department_id')
+    manager = db.relationship('Employee', foreign_keys=[manager_id], post_update=True)
     
     def __repr__(self):
         return f'<Department {self.name}>'

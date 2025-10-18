@@ -16,7 +16,7 @@
             </div>
             <div class="mb-3">
                 <label class="form-label">日期 *</label>
-                <input type="date" class="form-control" name="date" value="{{ attendance.date if attendance else '' }}" required>
+                <input type="date" class="form-control" name="date" value="{{ attendance.date if attendance else '' }}" min="2020-01-01" max="2030-12-31" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">上班时间</label>
@@ -29,12 +29,27 @@
             <div class="mb-3">
                 <label class="form-label">状态</label>
                 <select class="form-select" name="status">
-                    <option value="正常">正常</option>
-                    <option value="迟到">迟到</option>
-                    <option value="早退">早退</option>
-                    <option value="缺勤">缺勤</option>
-                    <option value="请假">请假</option>
+                    <option value="正常" {% if attendance and attendance.status == '正常' %}selected{% endif %}>正常</option>
+                    <option value="迟到" {% if attendance and attendance.status == '迟到' %}selected{% endif %}>迟到</option>
+                    <option value="早退" {% if attendance and attendance.status == '早退' %}selected{% endif %}>早退</option>
+                    <option value="缺勤" {% if attendance and attendance.status == '缺勤' %}selected{% endif %}>缺勤</option>
+                    <option value="请假" {% if attendance and attendance.status == '请假' %}selected{% endif %}>请假</option>
                 </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">请假类型</label>
+                <select class="form-select" name="leave_type">
+                    <option value="">无</option>
+                    <option value="病假" {% if attendance and attendance.leave_type == '病假' %}selected{% endif %}>病假</option>
+                    <option value="事假" {% if attendance and attendance.leave_type == '事假' %}selected{% endif %}>事假</option>
+                    <option value="年假" {% if attendance and attendance.leave_type == '年假' %}selected{% endif %}>年假</option>
+                    <option value="产假" {% if attendance and attendance.leave_type == '产假' %}selected{% endif %}>产假</option>
+                    <option value="其他" {% if attendance and attendance.leave_type == '其他' %}selected{% endif %}>其他</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">备注</label>
+                <textarea class="form-control" name="remarks" rows="3">{{ attendance.remarks if attendance else '' }}</textarea>
             </div>
             <button type="submit" class="btn btn-primary">保存</button>
             <a href="{{ url_for('attendances') }}" class="btn btn-secondary">取消</a>
