@@ -409,11 +409,38 @@ def add_attendance():
     """添加考勤记录"""
     if request.method == 'POST':
         try:
+            # 处理时间字段的解析
+            check_in_time = None
+            check_out_time = None
+            
+            check_in_str = request.form.get('check_in_time', '').strip()
+            check_out_str = request.form.get('check_out_time', '').strip()
+            
+            if check_in_str:
+                try:
+                    # 尝试解析时间格式
+                    if ':' in check_in_str:
+                        check_in_time = datetime.strptime(check_in_str, '%H:%M').time()
+                    else:
+                        # 如果没有冒号，尝试解析为小时
+                        check_in_time = datetime.strptime(f"{check_in_str}:00", '%H:%M').time()
+                except:
+                    pass
+            
+            if check_out_str:
+                try:
+                    if ':' in check_out_str:
+                        check_out_time = datetime.strptime(check_out_str, '%H:%M').time()
+                    else:
+                        check_out_time = datetime.strptime(f"{check_out_str}:00", '%H:%M').time()
+                except:
+                    pass
+            
             attendance = Attendance(
                 employee_id=request.form.get('employee_id'),
                 date=datetime.strptime(request.form.get('date'), '%Y-%m-%d').date(),
-                check_in_time=datetime.strptime(request.form.get('check_in_time'), '%H:%M').time() if request.form.get('check_in_time') else None,
-                check_out_time=datetime.strptime(request.form.get('check_out_time'), '%H:%M').time() if request.form.get('check_out_time') else None,
+                check_in_time=check_in_time,
+                check_out_time=check_out_time,
                 status=request.form.get('status'),
                 leave_type=request.form.get('leave_type'),
                 remarks=request.form.get('remarks')
@@ -440,10 +467,35 @@ def edit_attendance(id):
     
     if request.method == 'POST':
         try:
+            # 处理时间字段的解析
+            check_in_time = None
+            check_out_time = None
+            
+            check_in_str = request.form.get('check_in_time', '').strip()
+            check_out_str = request.form.get('check_out_time', '').strip()
+            
+            if check_in_str:
+                try:
+                    if ':' in check_in_str:
+                        check_in_time = datetime.strptime(check_in_str, '%H:%M').time()
+                    else:
+                        check_in_time = datetime.strptime(f"{check_in_str}:00", '%H:%M').time()
+                except:
+                    pass
+            
+            if check_out_str:
+                try:
+                    if ':' in check_out_str:
+                        check_out_time = datetime.strptime(check_out_str, '%H:%M').time()
+                    else:
+                        check_out_time = datetime.strptime(f"{check_out_str}:00", '%H:%M').time()
+                except:
+                    pass
+            
             attendance.employee_id = request.form.get('employee_id')
             attendance.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
-            attendance.check_in_time = datetime.strptime(request.form.get('check_in_time'), '%H:%M').time() if request.form.get('check_in_time') else None
-            attendance.check_out_time = datetime.strptime(request.form.get('check_out_time'), '%H:%M').time() if request.form.get('check_out_time') else None
+            attendance.check_in_time = check_in_time
+            attendance.check_out_time = check_out_time
             attendance.status = request.form.get('status')
             attendance.leave_type = request.form.get('leave_type')
             attendance.remarks = request.form.get('remarks')

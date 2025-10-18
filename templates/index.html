@@ -194,13 +194,20 @@ fetch('/api/gender-stats')
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('genderChart').getContext('2d');
+        // 处理空数据情况
+        if (!data.labels || data.labels.length === 0) {
+            data = {
+                labels: ['暂无数据'],
+                values: [1]
+            };
+        }
         new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: data.labels,
                 datasets: [{
                     data: data.values,
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#FF9F40', '#9966FF']
                 }]
             },
             options: {
@@ -214,13 +221,38 @@ fetch('/api/gender-stats')
             }
         });
     })
-    .catch(error => console.error('获取性别统计数据失败:', error));
+    .catch(error => {
+        console.error('获取性别统计数据失败:', error);
+        // 显示错误提示图表
+        const ctx = document.getElementById('genderChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['数据加载失败'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    });
 
 // 部门人数分布柱状图  
 fetch('/api/department-stats')
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('departmentChart').getContext('2d');
+        // 处理空数据情况
+        if (!data.labels || data.labels.length === 0) {
+            data = {
+                labels: ['暂无部门'],
+                values: [0]
+            };
+        }
         new Chart(ctx, {
             type: 'bar',
             data: {
@@ -244,7 +276,25 @@ fetch('/api/department-stats')
             }
         });
     })
-    .catch(error => console.error('获取部门统计数据失败:', error));
+    .catch(error => {
+        console.error('获取部门统计数据失败:', error);
+        const ctx = document.getElementById('departmentChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['数据加载失败'],
+                datasets: [{
+                    label: '错误',
+                    data: [0],
+                    backgroundColor: 'rgba(220, 53, 69, 0.5)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    });
 
 // 考勤趋势折线图
 fetch('/api/attendance-stats')
