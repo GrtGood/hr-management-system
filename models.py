@@ -13,11 +13,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='user')  # admin 或 user
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
-    
-    # 关联员工信息
-    employee = db.relationship('Employee', backref='user_account', foreign_keys=[employee_id])
     
     def set_password(self, password):
         """设置密码"""
@@ -26,6 +22,18 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """验证密码"""
         return check_password_hash(self.password_hash, password)
+    
+    def is_admin(self):
+        """检查是否是管理员"""
+        return self.role == 'admin'
+    
+    def is_user(self):
+        """检查是否是普通用户"""
+        return self.role == 'user'
+    
+    def get_display_name(self):
+        """获取显示名称"""
+        return self.username
 
 
 # 部门表
@@ -42,6 +50,7 @@ class Department(db.Model):
     
     # 关系
     employees = db.relationship('Employee', backref='department', foreign_keys='Employee.department_id')
+    manager = db.relationship('Employee', foreign_keys=[manager_id], post_update=True)
     
     def __repr__(self):
         return f'<Department {self.name}>'
