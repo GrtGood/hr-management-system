@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, User, Employee, Department, Attendance, Performance, Title, Training
+from models import db, User, Employee, Department, Attendance, Performance, Title, Training, College, EvaluationStandard, PerformanceDetail
 from config import Config
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -781,6 +781,11 @@ def performance_stats():
         })
     except Exception as e:
         return jsonify({'labels': [], 'values': [], 'error': str(e)})
+
+
+# ==================== 注册老师要求的新功能路由 ====================
+from teacher_requirements_routes import register_teacher_requirements_routes
+register_teacher_requirements_routes(app, admin_required)
 
 
 # 主程序入口
