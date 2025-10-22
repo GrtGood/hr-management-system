@@ -50,7 +50,13 @@ class Department(db.Model):
     
     # 关系
     employees = db.relationship('Employee', backref='department', foreign_keys='Employee.department_id')
-    manager = db.relationship('Employee', foreign_keys=[manager_id], post_update=True)
+    # manager关系通过属性访问，避免循环引用
+    @property
+    def manager(self):
+        """获取部门负责人"""
+        if self.manager_id:
+            return Employee.query.get(self.manager_id)
+        return None
     
     def __repr__(self):
         return f'<Department {self.name}>'
