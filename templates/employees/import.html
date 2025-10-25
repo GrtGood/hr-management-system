@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入员工 - 高校教职工人事信息管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-upload me-2"></i>批量导入员工</h2>
+    <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> 返回列表
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-file-excel me-2"></i>Excel文件导入
+    </div>
+    <div class="card-body">
+        <!-- 使用说明 -->
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle me-2"></i>导入说明</h5>
+            <ul class="mb-0">
+                <li>支持Excel文件格式：.xlsx、.xls</li>
+                <li>第一行必须是列标题，从第二行开始为数据</li>
+                <li>必填字段：工号、姓名</li>
+                <li>工号不能重复</li>
+                <li>部门名称需要在系统中存在，否则该字段为空</li>
+                <li>日期格式：YYYY-MM-DD 或 YYYY/MM/DD</li>
+            </ul>
+        </div>
+
+        <!-- 模板下载 -->
+        <div class="alert alert-warning">
+            <h6><i class="bi bi-download me-2"></i>Excel模板</h6>
+            <p>请按照以下列标题格式准备数据：</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>工号*</th>
+                            <th>姓名*</th>
+                            <th>性别</th>
+                            <th>电话</th>
+                            <th>邮箱</th>
+                            <th>部门名称</th>
+                            <th>职位</th>
+                            <th>聘用类型</th>
+                            <th>学历</th>
+                            <th>出生日期</th>
+                            <th>入职日期</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>E001</td>
+                            <td>张三</td>
+                            <td>男</td>
+                            <td>13812345678</td>
+                            <td>zhangsan@example.com</td>
+                            <td>计算机学院</td>
+                            <td>讲师</td>
+                            <td>全职</td>
+                            <td>博士</td>
+                            <td>1980-01-01</td>
+                            <td>2020-09-01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <small class="text-muted">*为必填字段</small>
+        </div>
+
+        <!-- 上传表单 -->
+        <form method="POST" enctype="multipart/form-data" class="mt-4">
+            <div class="mb-3">
+                <label for="file" class="form-label"><i class="bi bi-file-excel me-2"></i>选择Excel文件</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                <div class="form-text">请选择Excel文件（.xlsx或.xls格式）</div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> 开始导入
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-question-circle me-2"></i>常见问题
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="faq1">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1">
+                        导入失败怎么办？
+                    </button>
+                </h2>
+                <div id="collapse1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        1. 检查Excel文件格式是否正确<br>
+                        2. 确认必填字段（工号、姓名）不为空<br>
+                        3. 检查工号是否重复<br>
+                        4. 确认部门名称在系统中存在<br>
+                        5. 日期格式要正确
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="faq2">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">
+                        部分数据导入失败怎么办？
+                    </button>
+                </h2>
+                <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        系统会显示具体的错误信息，请根据错误提示修改Excel文件后重新导入失败的数据。
+                        成功导入的数据不会受影响。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

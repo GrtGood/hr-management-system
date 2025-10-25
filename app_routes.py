@@ -1,9 +1,9 @@
-# 这个文件包含职称评审、培训管理和导出功能的路由
+# 这个文件包含职称评审、培训管理、导出功能和用户管理的路由
 # 需要在app.py末尾导入这些路由
 
 from flask import request, redirect, url_for, flash, render_template, send_file
-from flask_login import login_required
-from models import db, Employee, Title, Training
+from flask_login import login_required, current_user
+from models import db, Employee, Title, Training, User
 from datetime import datetime
 from openpyxl import Workbook
 from io import BytesIO
@@ -366,3 +366,353 @@ def register_export_routes(app):
             as_attachment=True,
             download_name=f'绩效考核_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         )
+
+
+# ==================== Excel导入功能 ====================
+
+def register_import_routes(app, admin_required):
+    @app.route('/import/employees', methods=['GET', 'POST'])
+    @admin_required
+    def import_employees():
+        """Excel批量导入员工"""
+        # 检查pandas是否可用
+        try:
+            import pandas as pd
+            pandas_available = True
+        except ImportError:
+            pandas_available = False
+        
+        if request.method == 'POST':
+            if not pandas_available:
+                flash('系统缺少pandas库，Excel导入功能暂时不可用。请联系管理员安装pandas库。', 'error')
+                return render_template('employees/import.html')
+                
+            if 'file' not in request.files:
+                flash('请选择文件', 'error')
+                return redirect(request.url)
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash('请选择文件', 'error')
+                return redirect(request.url)
+            
+            if file and file.filename.rsplit('.', 1)[1].lower() in ['xlsx', 'xls']:
+                try:
+                    # 保存上传的文件
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    # 确保上传目录存在
+                    upload_folder = app.config['UPLOAD_FOLDER']
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder, exist_ok=True)
+                    
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(upload_folder, filename)
+                    file.save(file_path)
+                    
+                    # 读取Excel文件
+                    try:
+                        import pandas as pd
+                        df = pd.read_excel(file_path)
+                        # 清理和验证数据
+                        df = df.fillna('')  # 填充空值
+                    except ImportError:
+                        flash('缺少pandas库，无法导入Excel文件。请运行: pip install pandas', 'error')
+                        return redirect(request.url)
+                    except Exception as e:
+                        flash(f'读取Excel文件失败：{str(e)}', 'error')
+                        return redirect(request.url)
+                    
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    for index, row in df.iterrows():
+                        try:
+                            # 检查工号是否已存在
+                            if Employee.query.filter_by(employee_no=str(row.get('工号', ''))).first():
+                                error_count += 1
+                                errors.append(f"第{index+2}行：工号 {row.get('工号', '')} 已存在")
+                                continue
+                            
+                            # 查找部门ID
+                            department_id = None
+                            if row.get('部门名称'):
+                                from models import Department
+                                department = Department.query.filter_by(name=row['部门名称']).first()
+                                if department:
+                                    department_id = department.id
+                            
+                            # 创建员工记录
+                            employee = Employee(
+                                employee_no=str(row.get('工号', '')),
+                                name=str(row.get('姓名', '')),
+                                gender=str(row.get('性别', '')) if row.get('性别') else None,
+                                phone=str(row.get('电话', '')) if row.get('电话') else None,
+                                email=str(row.get('邮箱', '')) if row.get('邮箱') else None,
+                                department_id=department_id,
+                                position=str(row.get('职位', '')) if row.get('职位') else None,
+                                employment_type=str(row.get('聘用类型', '全职')),
+                                education=str(row.get('学历', '')) if row.get('学历') else None,
+                                status='在职'
+                            )
+                            
+                            # 处理日期字段
+                            if row.get('出生日期'):
+                                try:
+                                    if pd.notna(row['出生日期']):
+                                        employee.birth_date = pd.to_datetime(row['出生日期']).date()
+                                except:
+                                    pass
+                            
+                            if row.get('入职日期'):
+                                try:
+                                    if pd.notna(row['入职日期']):
+                                        employee.hire_date = pd.to_datetime(row['入职日期']).date()
+                                except:
+                                    pass
+                            
+                            db.session.add(employee)
+                            success_count += 1
+                            
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f"第{index+2}行：{str(e)}")
+                    
+                    # 提交事务
+                    if success_count > 0:
+                        db.session.commit()
+                        flash(f'导入完成！成功导入 {success_count} 条记录', 'success')
+                    
+                    if error_count > 0:
+                        flash(f'导入时发现 {error_count} 个错误', 'warning')
+                        # 显示前5个错误
+                        for error in errors[:5]:
+                            flash(error, 'error')
+                    
+                    # 删除临时文件
+                    os.remove(file_path)
+                    
+                    return redirect(url_for('employees'))
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'导入失败：{str(e)}', 'error')
+            else:
+                flash('请上传Excel文件（.xlsx或.xls格式）', 'error')
+        
+        return render_template('employees/import.html')
+
+
+# ==================== 统计报表功能 ====================
+
+def register_statistics_routes(app):
+    @app.route('/statistics')
+    @login_required
+    def statistics():
+        """统计报表首页"""
+        from models import Department, Performance, Attendance
+        from sqlalchemy import func, extract
+        from datetime import date
+        
+        # 基础统计
+        total_employees = Employee.query.filter_by(status='在职').count()
+        total_departments = Department.query.count()
+        
+        # 性别统计
+        gender_stats = db.session.query(
+            Employee.gender,
+            func.count(Employee.id).label('count')
+        ).filter_by(status='在职').group_by(Employee.gender).all()
+        
+        # 学历统计
+        education_stats = db.session.query(
+            Employee.education,
+            func.count(Employee.id).label('count')
+        ).filter_by(status='在职').group_by(Employee.education).all()
+        
+        # 部门统计
+        dept_stats = db.session.query(
+            Department.name,
+            func.count(Employee.id).label('count')
+        ).outerjoin(Employee, Department.id == Employee.department_id)\
+         .filter(Employee.status == '在职')\
+         .group_by(Department.name).all()
+        
+        # 绩效统计
+        perf_stats = db.session.query(
+            Performance.rating,
+            func.count(Performance.id).label('count')
+        ).group_by(Performance.rating).all()
+        
+        # 月度考勤统计（当年）
+        current_year = date.today().year
+        monthly_attendance = []
+        for month in range(1, 13):
+            count = db.session.query(Attendance).filter(
+                extract('year', Attendance.date) == current_year,
+                extract('month', Attendance.date) == month
+            ).count()
+            monthly_attendance.append({'month': month, 'count': count})
+        
+        return render_template('statistics/index.html',
+                             total_employees=total_employees,
+                             total_departments=total_departments,
+                             gender_stats=gender_stats,
+                             education_stats=education_stats,
+                             dept_stats=dept_stats,
+                             perf_stats=perf_stats,
+                             monthly_attendance=monthly_attendance)
+
+
+# ==================== 用户管理功能 ====================
+
+def register_user_management_routes(app, admin_required):
+    
+    @app.route('/users')
+    @admin_required  # 只有管理员可以访问
+    def users():
+        """用户管理列表"""
+        page = request.args.get('page', 1, type=int)
+        search = request.args.get('search', '').strip()
+        role_filter = request.args.get('role')
+        
+        query = User.query
+        
+        # 搜索过滤
+        if search:
+            query = query.filter(User.username.ilike(f'%{search}%'))
+        
+        # 角色过滤
+        if role_filter:
+            query = query.filter_by(role=role_filter)
+        
+        # 分页
+        pagination = query.order_by(User.created_at.desc()).paginate(
+            page=page, per_page=app.config['ITEMS_PER_PAGE'], error_out=False
+        )
+        
+        return render_template('users/list.html',
+                             users=pagination.items,
+                             pagination=pagination,
+                             search=search,
+                             role_filter=role_filter)
+
+    @app.route('/users/add', methods=['GET', 'POST'])
+    @admin_required
+    def add_user():
+        """添加用户"""
+        if request.method == 'POST':
+            try:
+                username = request.form.get('username').strip()
+                password = request.form.get('password')
+                role = request.form.get('role', 'user')
+                
+                # 验证用户名是否已存在
+                if User.query.filter_by(username=username).first():
+                    flash('用户名已存在！', 'error')
+                    return render_template('users/add.html')
+                
+                # 创建用户
+                user = User(
+                    username=username,
+                    role=role
+                )
+                user.set_password(password)
+                
+                db.session.add(user)
+                db.session.commit()
+                
+                flash('用户创建成功！', 'success')
+                return redirect(url_for('users'))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'创建失败：{str(e)}', 'error')
+        
+        return render_template('users/add.html')
+
+    @app.route('/users/<int:id>/edit', methods=['GET', 'POST'])
+    @admin_required
+    def edit_user(id):
+        """编辑用户"""
+        user = User.query.get_or_404(id)
+        
+        # 不能编辑admin用户的角色
+        if user.username == 'admin' and current_user.id != user.id:
+            flash('不能编辑admin用户！', 'error')
+            return redirect(url_for('users'))
+        
+        if request.method == 'POST':
+            try:
+                username = request.form.get('username').strip()
+                role = request.form.get('role', 'user')
+                password = request.form.get('password')
+                
+                # 检查用户名是否被其他用户占用
+                existing = User.query.filter_by(username=username).first()
+                if existing and existing.id != user.id:
+                    flash('用户名已被其他用户占用！', 'error')
+                    return render_template('users/edit.html', user=user)
+                
+                # 不能修改admin用户的角色
+                if user.username == 'admin':
+                    role = 'admin'
+                
+                user.username = username
+                user.role = role
+                
+                # 如果提供了新密码，则更新
+                if password:
+                    user.set_password(password)
+                
+                db.session.commit()
+                flash('用户更新成功！', 'success')
+                return redirect(url_for('users'))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'更新失败：{str(e)}', 'error')
+        
+        return render_template('users/edit.html', user=user)
+
+    @app.route('/users/<int:id>/delete', methods=['POST'])
+    @admin_required
+    def delete_user(id):
+        """删除用户"""
+        user = User.query.get_or_404(id)
+        
+        # 不能删除admin用户和自己
+        if user.username == 'admin' or user.id == current_user.id:
+            flash('不能删除admin用户或自己的账号！', 'error')
+            return redirect(url_for('users'))
+        
+        try:
+            db.session.delete(user)
+            db.session.commit()
+            flash('用户已删除', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'删除失败：{str(e)}', 'error')
+        
+        return redirect(url_for('users'))
+
+    @app.route('/users/<int:id>/reset-password', methods=['POST'])
+    @admin_required 
+    def reset_user_password(id):
+        """重置用户密码"""
+        user = User.query.get_or_404(id)
+        
+        try:
+            # 重置为默认密码
+            default_password = '123456'
+            user.set_password(default_password)
+            db.session.commit()
+            
+            flash(f'用户 {user.username} 的密码已重置为：{default_password}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'密码重置失败：{str(e)}', 'error')
+        
+        return redirect(url_for('users'))

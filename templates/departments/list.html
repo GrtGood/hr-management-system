@@ -16,7 +16,7 @@
             <tr>
                 <td>{{ dept.code }}</td>
                 <td>{{ dept.name }}</td>
-                <td>{{ dept.manager_id or '-' }}</td>
+                <td>{{ dept.manager.name if dept.manager else '-' }}</td>
                 <td>{{ dept.employees|length }}</td>
                 <td>
                     {% if current_user.role == 'admin' %}

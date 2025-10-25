@@ -24,7 +24,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">出生日期</label>
-                    <input type="date" class="form-control" name="birth_date" value="{{ employee.birth_date if employee else '' }}">
+                    <input type="date" class="form-control" name="birth_date" value="{{ employee.birth_date if employee else '' }}" min="1920-01-01" max="2010-12-31">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">身份证号</label>
@@ -62,7 +62,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">入职日期</label>
-                    <input type="date" class="form-control" name="hire_date" value="{{ employee.hire_date if employee else '' }}">
+                    <input type="date" class="form-control" name="hire_date" value="{{ employee.hire_date if employee else '' }}" min="1980-01-01" max="2030-12-31">
                 </div>
                 {% if employee %}
                 <div class="col-md-6 mb-3">

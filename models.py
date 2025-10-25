@@ -13,11 +13,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='user')  # admin 或 user
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
-    
-    # 关联员工信息
-    employee = db.relationship('Employee', backref='user_account', foreign_keys=[employee_id])
     
     def set_password(self, password):
         """设置密码"""
@@ -26,6 +22,18 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """验证密码"""
         return check_password_hash(self.password_hash, password)
+    
+    def is_admin(self):
+        """检查是否是管理员"""
+        return self.role == 'admin'
+    
+    def is_user(self):
+        """检查是否是普通用户"""
+        return self.role == 'user'
+    
+    def get_display_name(self):
+        """获取显示名称"""
+        return self.username
 
 
 # 部门表
@@ -35,6 +43,7 @@ class Department(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
+    college_id = db.Column(db.Integer, db.ForeignKey('colleges.id'))  # 所属学院
     description = db.Column(db.Text)
     manager_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -42,6 +51,13 @@ class Department(db.Model):
     
     # 关系
     employees = db.relationship('Employee', backref='department', foreign_keys='Employee.department_id')
+    # manager关系通过属性访问，避免循环引用
+    @property
+    def manager(self):
+        """获取部门负责人"""
+        if self.manager_id:
+            return Employee.query.get(self.manager_id)
+        return None
     
     def __repr__(self):
         return f'<Department {self.name}>'
@@ -159,6 +175,18 @@ class Title(db.Model):
     approval_date = db.Column(db.Date)  # 批准日期
     status = db.Column(db.String(20), default='待审核')  # 状态（待审核/已通过/未通过）
     certificate_no = db.Column(db.String(50))  # 证书编号
+    
+    # 新增：材料上传相关字段
+    attachment_filename = db.Column(db.String(255))  # 上传的文件名
+    attachment_path = db.Column(db.String(500))  # 文件存储路径
+    attachment_upload_time = db.Column(db.DateTime)  # 上传时间
+    
+    # 新增：审核相关字段
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 审核人ID
+    review_date = db.Column(db.DateTime)  # 审核时间
+    review_comments = db.Column(db.Text)  # 审核意见
+    is_notified = db.Column(db.Boolean, default=False)  # 是否已通知申请人
+    
     remarks = db.Column(db.Text)  # 备注
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -191,3 +219,71 @@ class Training(db.Model):
     
     def __repr__(self):
         return f'<Training {self.training_name} - {self.employee.name}>'
+
+
+# 学院表
+class College(db.Model):
+    __tablename__ = 'colleges'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)  # 学院名称
+    code = db.Column(db.String(20), unique=True, nullable=False)  # 学院代码
+    dean = db.Column(db.String(50))  # 院长姓名
+    description = db.Column(db.Text)  # 描述
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # 关系
+    departments = db.relationship('Department', backref='college', lazy='dynamic')
+    evaluation_standards = db.relationship('EvaluationStandard', backref='college', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<College {self.name}>'
+
+
+# 绩效考核标准表（按学院定制）
+class EvaluationStandard(db.Model):
+    __tablename__ = 'evaluation_standards'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    college_id = db.Column(db.Integer, db.ForeignKey('colleges.id'), nullable=False)
+    item_name = db.Column(db.String(100), nullable=False)  # 考核项目名称
+    item_type = db.Column(db.String(50))  # 项目类型（教学/科研/服务/其他）
+    weight = db.Column(db.Float, default=1.0)  # 权重
+    
+    # ABCD等级分数标准
+    grade_a_min = db.Column(db.Float, default=90)  # A等级最低分
+    grade_b_min = db.Column(db.Float, default=80)  # B等级最低分
+    grade_c_min = db.Column(db.Float, default=70)  # C等级最低分
+    grade_d_min = db.Column(db.Float, default=60)  # D等级最低分（60以下为不合格）
+    
+    # 等级对应分数
+    grade_a_score = db.Column(db.Float, default=100)  # A等级对应分数
+    grade_b_score = db.Column(db.Float, default=85)   # B等级对应分数
+    grade_c_score = db.Column(db.Float, default=75)   # C等级对应分数
+    grade_d_score = db.Column(db.Float, default=65)   # D等级对应分数
+    
+    description = db.Column(db.Text)  # 标准说明
+    is_active = db.Column(db.Boolean, default=True)  # 是否启用
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    def __repr__(self):
+        return f'<EvaluationStandard {self.college.name} - {self.item_name}>'
+
+
+# 绩效考核详情表（存储等级评分）
+class PerformanceDetail(db.Model):
+    __tablename__ = 'performance_details'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    performance_id = db.Column(db.Integer, db.ForeignKey('performances.id'), nullable=False)
+    standard_id = db.Column(db.Integer, db.ForeignKey('evaluation_standards.id'), nullable=False)
+    grade = db.Column(db.String(1))  # 评定等级（A/B/C/D）
+    score = db.Column(db.Float)  # 该项得分
+    comments = db.Column(db.Text)  # 评语
+    
+    # 关系
+    performance = db.relationship('Performance', backref='details')
+    standard = db.relationship('EvaluationStandard')
+    
+    def __repr__(self):
+        return f'<PerformanceDetail {self.performance.employee.name} - {self.standard.item_name}>'
