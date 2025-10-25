@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}学院管理 - 高校人事管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> 学院管理</h2>
+    <a href="{{ url_for('add_college') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> 添加学院
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>学院代码</th>
+                        <th>学院名称</th>
+                        <th>院长</th>
+                        <th>描述</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for college in colleges %}
+                    <tr>
+                        <td><span class="badge bg-primary">{{ college.code }}</span></td>
+                        <td><strong>{{ college.name }}</strong></td>
+                        <td>{{ college.dean or '-' }}</td>
+                        <td>{{ college.description or '-' }}</td>
+                        <td>{{ college.created_at.strftime('%Y-%m-%d') if college.created_at else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('college_standards', id=college.id) }}" class="btn btn-sm btn-info" title="考核标准">
+                                <i class="bi bi-star"></i> 考核标准
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <h5><i class="bi bi-info-circle"></i> 功能说明</h5>
+    <ul>
+        <li><strong>学院管理：</strong>管理各个学院的基本信息</li>
+        <li><strong>考核标准：</strong>每个学院可以设置独特的绩效考核标准和权重</li>
+        <li><strong>ABCD评分：</strong>支持四级评分体系，自动计算加权平均分</li>
+        <li><strong>差异化考核：</strong>计算机学院特别重视算法研究（权重1.8）</li>
+    </ul>
+</div>
+{% endblock %}

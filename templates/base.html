@@ -146,6 +146,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if 'college' in request.endpoint %}active{% endif %}" href="{{ url_for('colleges') }}">
+                                <i class="bi bi-building"></i> 学院管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if 'training' in request.endpoint %}active{% endif %}" href="{{ url_for('trainings') }}">
                                 <i class="bi bi-book"></i> 培训发展
                             </a>
